@@ -3,10 +3,14 @@ from lib.db.connection import get_connection
 class BaseModel:
     @classmethod
     def _execute_query(cls, query, params=(), fetch_one=False, fetch_all=False, commit=False):
-        """Helper method to execute database queries"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
+       """Helper method to execute database queries"""
+       conn = get_connection()
+       cursor = conn.cursor()
+       try:
+        # Ensure we're only executing one statement
+           if ';' in query:
+              raise ValueError("Multiple statements not allowed in single execute()")
+            
             cursor.execute(query, params)
             if commit:
                 conn.commit()
@@ -20,6 +24,7 @@ class BaseModel:
             raise e
         finally:
             conn.close()
+    
 
     @classmethod
     def create_table(cls):

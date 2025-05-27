@@ -1,3 +1,5 @@
+import os
+os.environ['TESTING'] = '1'
 import pytest
 from lib.models.magazine import Magazine
 from lib.models.author import Author
@@ -5,10 +7,24 @@ from lib.models.author import Author
 @pytest.fixture(autouse=True)
 def setup_db():
     """Setup and teardown for each test"""
+    from lib.db.connection import setup_database
+    from lib.models import BaseModel
+    
+    # Clear existing tables
+    BaseModel._execute_query("DROP TABLE IF EXISTS articles", commit=True)
+    BaseModel._execute_query("DROP TABLE IF EXISTS authors", commit=True)
+    BaseModel._execute_query("DROP TABLE IF EXISTS magazines", commit=True)
+    
+    # Recreate tables
+    setup_database()
+    
+    # Seed test data
     from lib.db.seed import seed_database
     seed_database()
+    
     yield
-    # Clean up after tests
+    
+    # No teardown needed since we're using an in-memory database for tests
 
 def test_magazine_creation():
     magazine = Magazine(name="Test Magazine", category="Test").save()
