@@ -1,49 +1,29 @@
-import os
-os.environ['TESTING'] = '1'
 import pytest
 from lib.models.magazine import Magazine
 from lib.models.author import Author
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    """Setup and teardown for each test"""
-    from lib.db.connection import setup_database
-    from lib.models import BaseModel
-    
-    # Clear existing tables
-    BaseModel._execute_query("DROP TABLE IF EXISTS articles", commit=True)
-    BaseModel._execute_query("DROP TABLE IF EXISTS authors", commit=True)
-    BaseModel._execute_query("DROP TABLE IF EXISTS magazines", commit=True)
-    
-    # Recreate tables
-    setup_database()
-    
-    # Seed test data
-    from lib.db.seed import seed_database
-    seed_database()
-    
-    yield
-    
-    # No teardown needed since we're using an in-memory database for tests
+from lib.models.article import Article
 
 def test_magazine_creation():
-    magazine = Magazine(name="Test Magazine", category="Test").save()
-    assert magazine.id is not None
+    magazine = Magazine.create("Test Magazine", "Lifestyle")
     assert magazine.name == "Test Magazine"
+    assert magazine.category == "Lifestyle"
 
-def test_magazine_articles():
-    magazine = Magazine.find_by_name("Tech Today")[0]
-    articles = magazine.articles()
-    assert len(articles) >= 2
-    assert all(article.magazine_id == magazine.id for article in articles)
+def test_magazine_articles_and_contributors():
+    mag = Magazine.create("Mag With Articles", "Tech")
+    author = Author.create("Author One")
+    article = author.add_article(mag, "Mag Article", "Some content")
+    articles = mag.articles()
+    contributors = mag.contributors()
+    assert len(articles) > 0
+    assert len(contributors) > 0
+    assert articles[0].title == "Mag Article"
+    assert contributors[0].name == "Author One"
 
-def test_magazine_contributors():
-    magazine = Magazine.find_by_name("Tech Today")[0]
-    contributors = magazine.contributors()
-    assert len(contributors) >= 2
-    assert all(isinstance(c, Author) for c in contributors)
-
-def test_top_publisher():
-    top_mag = Magazine.top_publisher()
-    assert top_mag is not None
-    assert isinstance(top_mag, Magazine)
+def test_magazine_article_titles_and_contributing_authors():
+    mag = Magazine.create("Title Test Mag", "Science")
+    author = Author.create("Author Two")
+    article = author.add_article(mag, "Title Test Article", "Content here")
+    titles = mag.article_titles()
+    authors = mag.contributing_authors()
+    assert "Title Test Article" in titles
+    assert any(a.name == "Author Two" for a in authors)

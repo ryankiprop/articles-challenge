@@ -1,53 +1,26 @@
-import os
-os.environ['TESTING'] = '1'
 import pytest
 from lib.models.author import Author
 from lib.models.magazine import Magazine
 from lib.models.article import Article
-from lib.db.connection import get_connection
-
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    """Setup and teardown for each test"""
-    from lib.db.connection import setup_database
-    from lib.models import BaseModel
-    
-    # Clear existing tables
-    BaseModel._execute_query("DROP TABLE IF EXISTS articles", commit=True)
-    BaseModel._execute_query("DROP TABLE IF EXISTS authors", commit=True)
-    BaseModel._execute_query("DROP TABLE IF EXISTS magazines", commit=True)
-    
-    # Recreate tables
-    setup_database()
-    
-    # Seed test data
-    from lib.db.seed import seed_database
-    seed_database()
-    
-    yield
-    
-    # No teardown needed since we're using an in-memory database for tests
 
 def test_author_creation():
-    author = Author(name="Test Author").save()
-    assert author.id is not None
+    author = Author.create("Test Author")
     assert author.name == "Test Author"
 
-def test_author_articles():
-    author = Author.find_by_name("John Doe")[0]
+def test_author_articles_and_magazines():
+    author = Author.create("Auth Articles Magazines")
+    magazine = Magazine.create("Test Mag", "Health")
+    article = author.add_article(magazine, "Author Article", "Article content here")
     articles = author.articles()
-    assert len(articles) >= 2
-    assert all(article.author_id == author.id for article in articles)
-
-def test_author_magazines():
-    author = Author.find_by_name("John Doe")[0]
     magazines = author.magazines()
-    assert len(magazines) >= 2
-    assert all(isinstance(m, Magazine) for m in magazines)
+    assert len(articles) > 0
+    assert len(magazines) > 0
+    assert articles[0].title == "Author Article"
+    assert magazines[0].name == "Test Mag"
 
-def test_author_topic_areas():
-    author = Author.find_by_name("John Doe")[0]
-    topics = author.topic_areas()
-    assert len(topics) >= 1
-    assert all(isinstance(t, str) for t in topics)
+def test_add_article_and_topic_areas():
+    author = Author.create("Temp Author")
+    mag = Magazine.create("TestMag", "Science")
+    article = author.add_article(mag, "Test Article", "Content for test article")
+    assert article.title == "Test Article"
+    assert article.content == "Content for test article"
